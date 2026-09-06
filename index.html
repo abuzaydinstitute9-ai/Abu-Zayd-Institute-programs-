@@ -475,13 +475,14 @@
 
       <div id="intlPayment" style="display:none;">
         <div class="whatsapp-note">
-          Please contact us on WhatsApp for international payment options.
+          Please reach out to us on WhatsApp to arrange payment — international payment isn't handled on this page.
         </div>
       </div>
 
       <a href="#" id="waBtn" class="wa-btn" target="_blank" rel="noopener">
-        Send Form &amp; Payment Receipt on WhatsApp
+        <span id="waBtnLabel">Send Form &amp; Payment Receipt on WhatsApp</span>
       </a>
+      <p class="muted-small" id="waHelp" style="margin-top:10px;"></p>
 
       <div style="text-align:center;margin-top:14px;">
         <button class="btn outline" onclick="showConfirmation()">I've submitted — Finish</button>
@@ -527,7 +528,6 @@
   };
 
   const WHATSAPP_NUMBER = '2349073528916';
-  const WHATSAPP_MESSAGE = "As-salaamu alaykum Abu Zayd team, here is my form copy and payment receipt.";
 
   let state = { programName:'', isFull:false, ngn:null, usd:null, formData:null, currency:'NGN' };
 
@@ -682,7 +682,35 @@
     document.getElementById('intlPayment').style.display = isNigeria ? 'none' : 'block';
     document.getElementById('ngnAmount').textContent = amountStr;
 
-    const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+    const fd = state.formData;
+    const detailsBlock = [
+      `Name: ${fd.fullName}`,
+      `Program: ${fd.program}`,
+      `Country: ${fd.country}`,
+      `Amount: ${amountStr}`,
+      `Preferred Days: ${fd.preferredDays.join(', ')}`,
+      `Preferred Time: ${fd.preferredTime}`
+    ].join('\n');
+
+    let message;
+    if(isNigeria){
+      message =
+        "As-salaamu alaykum Abu Zayd team, here is my form copy and payment receipt.\n\n" +
+        detailsBlock +
+        "\n\n(Payment receipt image attached separately in this chat.)";
+      document.getElementById('waBtnLabel').textContent = 'Send Form & Payment Receipt on WhatsApp';
+      document.getElementById('waHelp').textContent =
+        'This opens WhatsApp with your details pre-filled — attach your bank transfer screenshot in the chat, then tap Send.';
+    } else {
+      message =
+        "As-salaamu alaykum Abu Zayd team, I'm registering from outside Nigeria and would like to arrange payment.\n\n" +
+        detailsBlock;
+      document.getElementById('waBtnLabel').textContent = 'Reach Out on WhatsApp to Arrange Payment';
+      document.getElementById('waHelp').textContent =
+        'This opens WhatsApp with your registration details pre-filled so our team can guide you on how to pay.';
+    }
+
+    const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     document.getElementById('waBtn').href = waLink;
 
     showScreen('screen-payment');
@@ -722,4 +750,4 @@
   }
 </script>
 </body>
-</html>
+                                                                                                     </html>
