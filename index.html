@@ -384,6 +384,22 @@
           </select>
         </div>
         <div class="field">
+          <label for="stateInput">State</label>
+          <input type="text" id="stateInput" placeholder="e.g. Kaduna, Lagos, Kano" required>
+        </div>
+        <div class="field">
+          <label for="school">School / Institution</label>
+          <select id="school" required>
+            <option value="">Select institution type</option>
+            <option value="University">University</option>
+            <option value="Polytechnic">Polytechnic</option>
+            <option value="Secondary School">Secondary School</option>
+            <option value="College of Education">College of Education</option>
+            <option value="College of Health">College of Health</option>
+            <option value="College of Nursing">College of Nursing</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="email">Email</label>
           <input type="email" id="email" required>
         </div>
@@ -475,14 +491,15 @@
 
       <div id="intlPayment" style="display:none;">
         <div class="whatsapp-note">
-          Please reach out to us on WhatsApp to arrange payment — international payment isn't handled on this page.
+          <strong>International payment isn't processed on this page.</strong><br>
+          Tap the button below — it opens WhatsApp with your registration details pre-filled so our team can reach out to you directly and arrange payment.
         </div>
       </div>
 
       <a href="#" id="waBtn" class="wa-btn" target="_blank" rel="noopener">
         <span id="waBtnLabel">Send Form &amp; Payment Receipt on WhatsApp</span>
       </a>
-      
+      <p class="muted-small" id="waHelp" style="margin-top:10px;"></p>
     </div>
   </div>
 </section>
@@ -590,6 +607,9 @@
       `<strong>Program:</strong> ${name}`;
     document.getElementById('priceDisplay').textContent = '—';
     document.getElementById('country').value = '';
+    document.getElementById('stateInput').value = '';
+    document.getElementById('school').value = '';
+    document.getElementById('info').value = '';
     document.getElementById('preferredTime').value = '';
     dayCheckboxes.forEach(cb=>{ cb.checked = false; cb.closest('.day-check').classList.remove('checked'); });
     document.getElementById('dayHint').textContent = 'Select exactly 3 days.';
@@ -630,14 +650,17 @@
     const fullName = document.getElementById('fullName').value.trim();
     const age = document.getElementById('age').value.trim();
     const country = document.getElementById('country').value;
+    const stateVal = document.getElementById('stateInput').value.trim();
+    const school = document.getElementById('school').value;
     const email = document.getElementById('email').value.trim();
     const preferredTime = document.getElementById('preferredTime').value;
+    const info = document.getElementById('info').value.trim();
     const selectedDays = dayCheckboxes.filter(c=>c.checked).map(c=>c.value);
     const promisesChecked = Array.from(document.querySelectorAll('.promise-box')).every(cb=>cb.checked);
 
-    if(!fullName || !age || !country || !email || !preferredTime || selectedDays.length !== 3 || !promisesChecked){
+    if(!fullName || !age || !country || !stateVal || !school || !email || !preferredTime || selectedDays.length !== 3 || !promisesChecked){
       let msg = 'Please fill in all required fields before registering.';
-      if(fullName && age && country && email && preferredTime && promisesChecked && selectedDays.length !== 3){
+      if(fullName && age && country && stateVal && school && email && preferredTime && promisesChecked && selectedDays.length !== 3){
         msg = 'Please select exactly 3 preferred days.';
       } else if(!promisesChecked){
         msg = 'Please tick all four commitment promises before registering.';
@@ -649,11 +672,11 @@
     document.getElementById('formError').style.display = 'none';
 
     state.formData = {
-      fullName, age, country, email,
+      fullName, age, country, state: stateVal, school, email,
       program: state.programName,
       preferredDays: selectedDays,
       preferredTime,
-      info: document.getElementById('info').value.trim()
+      info
     };
 
     try{
@@ -682,6 +705,8 @@
     const detailsBlock = [
       `Name: ${fd.fullName}`,
       `Program: ${fd.program}`,
+      `School: ${fd.school}`,
+      `State: ${fd.state}`,
       `Country: ${fd.country}`,
       `Amount: ${amountStr}`,
       `Preferred Days: ${fd.preferredDays.join(', ')}`,
@@ -708,6 +733,9 @@
 
     const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     document.getElementById('waBtn').href = waLink;
+    document.getElementById('waBtn').onclick = function(){
+      setTimeout(showConfirmation, 400);
+    };
 
     showScreen('screen-payment');
   }
@@ -726,6 +754,8 @@
       '-------------------------------------------',
       `Full Name: ${state.formData.fullName}`,
       `Age: ${state.formData.age}`,
+      `School/Institution: ${state.formData.school}`,
+      `State: ${state.formData.state}`,
       `Country: ${state.formData.country}`,
       `Email: ${state.formData.email}`,
       `Program: ${state.formData.program}`,
@@ -746,4 +776,4 @@
   }
 </script>
 </body>
-                                                                                                     </html>
+</html>
