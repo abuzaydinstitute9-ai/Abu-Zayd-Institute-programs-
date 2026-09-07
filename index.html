@@ -317,6 +317,30 @@
   }
   .muted-small{color:var(--muted);font-size:.85rem;}
 
+  .timetable-box{
+    background:var(--cream);
+    border:1px solid var(--line);
+    border-left:3px solid var(--green);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    margin-top:16px;
+  }
+  .timetable-box h4{
+    font-family:'Amiri',serif;
+    color:var(--green);
+    margin:0 0 8px;
+    font-size:1rem;
+  }
+  .timetable-box .row{
+    display:flex;justify-content:space-between;
+    font-size:.88rem;
+    padding:5px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .timetable-box .row:last-child{border-bottom:none;}
+  .timetable-box .row span:first-child{color:var(--muted);}
+  .timetable-box .row span:last-child{color:var(--ink);font-weight:500;text-align:right;}
+
   footer{
     text-align:center;padding:26px 20px;
     color:var(--muted);font-size:.82rem;
@@ -510,7 +534,11 @@
       <div class="check">✓</div>
       <h2>Registration Received</h2>
       <p class="muted-small">Jazakumullahu khayran. Your registration for <strong id="confirmProgram"></strong> has been recorded. Our team will confirm your seat once payment is verified on WhatsApp.</p>
-      <button class="btn" style="margin-top:18px;" onclick="downloadSummary()">Download form summary</button>
+
+      <div class="timetable-box" id="timetableBox" style="text-align:left;"></div>
+
+      <button class="btn gold" style="margin-top:18px;width:100%;" onclick="downloadTimetable()">Add Timetable to Calendar (.ics)</button>
+      <button class="btn" style="margin-top:10px;width:100%;" onclick="downloadSummary()">Download form summary</button>
       <br>
       <button class="btn outline" style="margin-top:10px;" onclick="goHome()">Back to homepage</button>
     </div>
@@ -541,6 +569,42 @@
   };
 
   const WHATSAPP_NUMBER = '2349073528916';
+
+  // Order matches the day-selection checkboxes shown on the form
+  const DAY_ORDER = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+  // Approximate clock times (WAT) used only for building the downloadable calendar reminders
+  const TIME_MAP = {
+    'After Fajr': [5, 30],
+    'Morning (9am–12pm)': [9, 0],
+    'Afternoon (12pm–4pm)': [13, 0],
+    'After Asr': [16, 30],
+    'Evening (Maghrib–Isha)': [19, 0],
+    'After Isha': [20, 30]
+  };
+
+  function buildWeeklyPlan(programName, isFull, sortedDays){
+    if(isFull){
+      const progs = PROGRAMS.map(p=>p.name);
+      return sortedDays.map((day, idx)=>({
+        day,
+        subject: progs.slice(idx*2, idx*2+2).join(' + ')
+      }));
+    }
+    const isReinforcement = (programName === 'Islamic Studies' || programName === 'Adhkār');
+    const isExtra = EXTRA_PROGRAMS.some(p=>p.name === programName);
+    return sortedDays.map((day, idx)=>{
+      let subject = programName;
+      if(idx === 2 && !isReinforcement && !isExtra){
+        subject = `${programName} + Islamic Studies & Adhkār`;
+      }
+      return {day, subject};
+    });
+  }
+
+  function weeklyPlanText(plan){
+    return plan.map(item => `${item.day} → ${item.subject}`).join('\n');
+  }
 
   let state = { programName:'', isFull:false, ngn:null, usd:null, formData:null, currency:'NGN' };
 
@@ -655,7 +719,8 @@
     const email = document.getElementById('email').value.trim();
     const preferredTime = document.getElementById('preferredTime').value;
     const info = document.getElementById('info').value.trim();
-    const selectedDays = dayCheckboxes.filter(c=>c.checked).map(c=>c.value);
+    const selectedDays = dayCheckboxes.filter(c=>c.checked).map(c=>c.value)
+      .sort((a,b)=> DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
     const promisesChecked = Array.from(document.querySelectorAll('.promise-box')).every(cb=>cb.checked);
 
     if(!fullName || !age || !country || !stateVal || !school || !email || !preferredTime || selectedDays.length !== 3 || !promisesChecked){
@@ -671,11 +736,14 @@
     }
     document.getElementById('formError').style.display = 'none';
 
+    const weeklyPlan = buildWeeklyPlan(state.programName, state.isFull, selectedDays);
+
     state.formData = {
       fullName, age, country, state: stateVal, school, email,
       program: state.programName,
       preferredDays: selectedDays,
       preferredTime,
+      weeklyPlan,
       info
     };
 
@@ -710,7 +778,9 @@
       `Country: ${fd.country}`,
       `Amount: ${amountStr}`,
       `Preferred Days: ${fd.preferredDays.join(', ')}`,
-      `Preferred Time: ${fd.preferredTime}`
+      `Preferred Time: ${fd.preferredTime}`,
+      `\nWeekly Timetable:`,
+      weeklyPlanText(fd.weeklyPlan)
     ].join('\n');
 
     let message;
@@ -742,6 +812,12 @@
 
   function showConfirmation(){
     document.getElementById('confirmProgram').textContent = state.programName;
+    const fd = state.formData;
+    const rows = fd.weeklyPlan.map(item =>
+      `<div class="row"><span>${item.day}</span><span>${item.subject}</span></div>`
+    ).join('');
+    document.getElementById('timetableBox').innerHTML =
+      `<h4>Your Weekly Timetable — ${fd.preferredTime}</h4>${rows}`;
     showScreen('screen-confirm');
   }
 
@@ -763,6 +839,9 @@
       `Preferred Time: ${state.formData.preferredTime}`,
       `Amount Due: ${symbol}${amount.toLocaleString()}`,
       `Additional Information: ${state.formData.info || '—'}`,
+      '',
+      'Weekly Timetable:',
+      weeklyPlanText(state.formData.weeklyPlan),
     ].join('\n');
     const blob = new Blob([lines], {type:'text/plain'});
     const url = URL.createObjectURL(blob);
@@ -774,6 +853,76 @@
     a.remove();
     URL.revokeObjectURL(url);
   }
+
+  function pad2(n){ return n.toString().padStart(2,'0'); }
+
+  function nextDateForWeekday(dayName){
+    const jsWeekday = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const targetIndex = jsWeekday.indexOf(dayName);
+    const today = new Date();
+    let diff = (targetIndex - today.getDay() + 7) % 7;
+    if(diff === 0) diff = 7; // always schedule the next upcoming occurrence
+    const d = new Date(today);
+    d.setDate(today.getDate() + diff);
+    return d;
+  }
+
+  function icsDateTime(date, hour, minute){
+    return `${date.getFullYear()}${pad2(date.getMonth()+1)}${pad2(date.getDate())}T${pad2(hour)}${pad2(minute)}00`;
+  }
+
+  function dayToICSCode(dayName){
+    const map = { Sunday:'SU', Monday:'MO', Tuesday:'TU', Wednesday:'WE', Thursday:'TH', Friday:'FR', Saturday:'SA' };
+    return map[dayName];
+  }
+
+  function downloadTimetable(){
+    if(!state.formData) return;
+    const fd = state.formData;
+    const [hour, minute] = TIME_MAP[fd.preferredTime] || [9, 0];
+    const dtstamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+
+    const events = fd.weeklyPlan.map((item, idx)=>{
+      const eventDate = nextDateForWeekday(item.day);
+      const dtstart = icsDateTime(eventDate, hour, minute);
+      const uid = `abuzayd-${Date.now()}-${idx}@abuzaydinstitute`;
+      return [
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${dtstart}`,
+        'DURATION:PT1H',
+        `RRULE:FREQ=WEEKLY;BYDAY=${dayToICSCode(item.day)}`,
+        `SUMMARY:Abu Zayd Institute - ${item.subject}`,
+        `DESCRIPTION:${fd.program} class with Abu Zayd Institute. Be consistent and attend at your chosen time.`,
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:Your Abu Zayd Institute class starts in 10 minutes.',
+        'TRIGGER:-PT10M',
+        'END:VALARM',
+        'END:VEVENT'
+      ].join('\r\n');
+    }).join('\r\n');
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Abu Zayd Institute//Timetable//EN',
+      'CALSCALE:GREGORIAN',
+      events,
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([ics], {type:'text/calendar'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'abu-zayd-timetable.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 </script>
 </body>
-</html>
+  </html>
